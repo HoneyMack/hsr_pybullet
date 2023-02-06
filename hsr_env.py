@@ -4,6 +4,7 @@ import pybullet_utils.bullet_client as bc
 import pybullet_data
 import pybulletX as px
 import random
+import os
 
 from scipy.spatial.transform import Rotation as R
 import numpy as np
@@ -388,6 +389,11 @@ class HSREnv:
             valid = True
 
             for id in check_collisions:
+                if id is None:
+                    continue
+                print("id: ", id)
+                print("self.robot.id: ", self.robot.id)
+                print("self.c_gui.getClosestPoints(self.robot.id, id, 0): ", self.c_gui.getClosestPoints(self.robot.id, id, 0))
                 if len(self.c_gui.getClosestPoints(self.robot.id, id, 0)) > 0:
                     valid = False
                     break
@@ -644,26 +650,34 @@ class WRSEnv(HSREnv):
         random_containers = True
         rot_noise = np.pi / 180 * 5
         ids = {}
+        
+        #sdfファイルがあるベースディレクトリを指定
+        wrs_sdf_base_dir = 'hsr_pybullet/tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/'
 
+        
         random_wall = True
         if random_wall:
-            tmp_path = '/tmp/{}.sdf'.format(np.random.randint(1000000))
-            with open('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_frame/model.sdf', 'r') as f:
-                with open(tmp_path, 'w') as f_out:
+            tmp_path = 'tmp/{}.sdf'.format(np.random.randint(1000000))
+            #ディレクトリがなければ作る
+            os.makedirs("tmp",exist_ok=True)
+            
+            with open(wrs_sdf_base_dir + 'wrc_frame/model.sdf', 'r') as f:
+                with open(tmp_path, 'w+') as f_out:
                     height = np.random.uniform(0.5, 1.0)
                     thickness = np.random.uniform(0.01, 0.1)
                     data = f.read().replace('0.6</size>', '{}</size>'.format(height))
                     data = data.replace('0.3 ', '{} '.format(height / 2.0))
                     data = data.replace('0.1 ', '{} '.format(thickness))
                     f_out.write(data)
+            
             x = self.c_gui.loadSDF(tmp_path)[0]
         else:
-            x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_frame/model.sdf')[0]
+            x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_frame/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (0, 0, 0), (0, 0, 0, 1))
         ids['walls'] = x
 
         pos_noise = 0.1
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_bookshelf/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_bookshelf/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         2.7 + np.random.uniform(-1, 1) * pos_noise, -1 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
@@ -671,7 +685,7 @@ class WRSEnv(HSREnv):
         ids['shelf'] = x
 
         pos_noise = 0.2
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_bin_black/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_bin_black/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -1.7 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
@@ -679,7 +693,7 @@ class WRSEnv(HSREnv):
         self.c_gui.changeVisualShape(x, -1, rgbaColor=(0.3, 0.3, 0.3, 1))
         ids['bin_left'] = x
 
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_bin_green/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_bin_green/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -1.2 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
@@ -687,13 +701,16 @@ class WRSEnv(HSREnv):
         self.c_gui.changeVisualShape(x, -1, rgbaColor=(0, 0.7, 0, 1))
         ids['bin_right'] = x
 
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_stair_like_drawer/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_stair_like_drawer/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (-2.7, 1, 0), (0, 0, 0, 1))
         ids['stair_drawer'] = x
 
-        random_knob = True
-        drawer_path = 'tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/{}/model-1_4.sdf'.format(
-            'trofast' if random_knob else 'trafast_knob')
+        #random_knob = True
+        random_knob = False
+        
+        
+        drawer_path = wrs_sdf_base_dir + '{}/model-1_4.sdf'.format(
+            'trofast' if random_knob else 'trofast_knob')
         pull_noise = 0.05
 
         def spawn_drawer(pos, knob=True):
@@ -739,21 +756,21 @@ class WRSEnv(HSREnv):
         ids['drawer_top'] = drawer_id
         ids['knob_top'] = knob_id
 
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_tall_table/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_tall_table/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -0.3 + np.random.uniform(-1, 1) * pos_noise, 1.2 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
                                                        [0, 0, np.random.uniform(-1, 1) * rot_noise]))
         ids['tall_table'] = x
 
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_long_table/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_long_table/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -0.3 + np.random.uniform(-1, 1) * pos_noise, 0.2 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
                                                        [0, 0, 1.57 + np.random.uniform(-1, 1) * rot_noise]))
         ids['long_table'] = x
 
-        x = self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_long_table/model.sdf')[0]
+        x = self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_long_table/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -0.3 + np.random.uniform(-1, 1) * pos_noise, 0),
                                                    p.getQuaternionFromEuler(
@@ -762,7 +779,7 @@ class WRSEnv(HSREnv):
 
         pos_noise = 0.03
         x = eu.load_container(self.c_gui) if random_containers else \
-        self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_tray/model.sdf')[0]
+        self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_tray/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -0.75 + np.random.uniform(-1, 1) * pos_noise, 0.401),
                                                    p.getQuaternionFromEuler(
@@ -771,7 +788,7 @@ class WRSEnv(HSREnv):
         ids['tray_left'] = x
 
         x = eu.load_container(self.c_gui) if random_containers else \
-        self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_tray/model.sdf')[0]
+        self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_tray/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -0.45 + np.random.uniform(-1, 1) * pos_noise, 0.401),
                                                    p.getQuaternionFromEuler(
@@ -780,7 +797,7 @@ class WRSEnv(HSREnv):
         ids['tray_right'] = x
 
         x = eu.load_container(self.c_gui, shape='left container') if random_containers else \
-        self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_container_a/model.sdf')[0]
+        self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_container_a/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, -0.2 + np.random.uniform(-1, 1) * pos_noise, 0.401),
                                                    p.getQuaternionFromEuler(
@@ -789,7 +806,7 @@ class WRSEnv(HSREnv):
         ids['container_left'] = x
 
         x = eu.load_container(self.c_gui, shape='right container') if random_containers else \
-        self.c_gui.loadSDF('tmc_wrs_gazebo/tmc_wrs_gazebo_worlds/models/wrc_container_b/model.sdf')[0]
+        self.c_gui.loadSDF(wrs_sdf_base_dir + 'wrc_container_b/model.sdf')[0]
         self.c_gui.resetBasePositionAndOrientation(x, (
         -2.7 + np.random.uniform(-1, 1) * pos_noise, 0.1 + np.random.uniform(-1, 1) * pos_noise, 0.401),
                                                    p.getQuaternionFromEuler(
@@ -1327,6 +1344,8 @@ def setup_object(client, id, coll_ids, area, tries=10):
         valid = True
 
         for cid in coll_ids:
+            if id is None or cid is None:
+                continue
             if len(client.getClosestPoints(id, cid, 0)) > 0:
                 valid = False
                 break
