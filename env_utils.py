@@ -396,9 +396,9 @@ def simulate(gt_depth, model, noise_multiplier):
 
     return noisy_depth
 
-
-DISTORT_MODEL = np.load('redwood-depth-dist-model.npy')
-DISTORT_MODEL = DISTORT_MODEL.reshape(DISTORT_MODEL.shape[0], -1, 4)
+# 使ってないのでエラーを避けるため一旦コメントアウト
+# DISTORT_MODEL = np.load('redwood-depth-dist-model.npy')
+# DISTORT_MODEL = DISTORT_MODEL.reshape(DISTORT_MODEL.shape[0], -1, 4)
 
 def distort(depth, noise=1.0):
     return simulate(depth, DISTORT_MODEL, noise)
